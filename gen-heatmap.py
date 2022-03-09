@@ -4,6 +4,21 @@ import shutil
 import subprocess
 import xml.etree.ElementTree as et
 
+LayerNames = (
+    'Base',
+    'LED',
+    'Media',
+    'SymbolsR',
+    'SymbolsL',
+    'Editing',
+    'NumBlock',
+    'VSCode',
+    'Caps',
+    'Umlaute',
+    'QWERTY',
+    'Fn Keys',
+)
+
 HeatmapPath = 'heatmap'
 shutil.rmtree(HeatmapPath, ignore_errors=True)
 os.mkdir(HeatmapPath)
@@ -34,7 +49,7 @@ def add(layer_id, row, col):
     if row_entry[col] > max_strokes:
         max_strokes = row_entry[col]
 
-files = glob.glob('*_log.txt')
+files = glob.glob('logs/*_log.txt')
 for file_ in files:
     with open(file_, 'rt') as f:
         for line in f:
@@ -50,11 +65,10 @@ for file_ in files:
                 print("ERROR:", line)
                 errors += 1
 
-def get_svg_filename(layer_id):
-    return f"heatmap_{layer_id}.svg"
+def get_svg_filename(layer_id, type_):
+    return f"heatmap_{layer_id}_{type_}.svg"
 
-for layer_id in sorted(keys):
-    layer = keys[layer_id]
+def gen_heatmap(layer, max_strokes, out_file):
     et.register_namespace('', "http://www.w3.org/2000/svg")
     tree = et.parse('ergodox.svg')
     root = tree.getroot()
@@ -73,8 +87,14 @@ for layer_id in sorted(keys):
         rgb = '#%s' % ''.join(f'{int(i):02x}' for i in [r, g, b])
         rect.attrib['fill'] = rgb
 
-    with open(get_heatmap_path(get_svg_filename(layer_id)), 'wt') as f:
+    with open(get_heatmap_path(out_file), 'wt') as f:
         print(et.tostring(root, encoding='utf8').decode('utf8'), file=f)
+
+for layer_id in sorted(keys):
+    layer = keys[layer_id]
+    gen_heatmap(layer, max_strokes, get_svg_filename(layer_id, 'global'))
+    max_layer_strokes = max([ max(row.values()) for row in layer.values() ])
+    gen_heatmap(layer, max_layer_strokes, get_svg_filename(layer_id, 'local'))
 
 with open(get_heatmap_path('index.html'), 'wt') as f:
     print("""<html><head><title>ErgodoxEZ Heatmap</title>
@@ -116,8 +136,12 @@ th {
 </table>""", file=f)
 
     for layer_id in sorted(keys):
-        print(f"""<h1>Layer {layer_id}</h1><img src="{get_svg_filename(layer_id)}"/>""", file=f)
-    print("""</body>
+        print(f"""<h1>Layer {layer_id} - {LayerNames[layer_id]}</h1>
+    <img src="{get_svg_filename(layer_id, 'global')}"/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    <img src="{get_svg_filename(layer_id, 'local')}"/>
+""", file=f)
+    print("""</div>
+</body>
 </html>""", file=f)
 
 import pathlib

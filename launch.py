@@ -10,7 +10,7 @@ host = socket.gethostname()
 print('Launching')
 proc = subprocess.Popen(['hid_listen.exe'], stdout=subprocess.PIPE)
 
-with open(os.path.join(path, host + '_log.txt'), 'at', buffering=1024*10) as f:
+with open(os.path.join(path, 'logs', host + '_log.txt'), 'at', buffering=1024*10) as f:
     try:
         while True:
             line = proc.stdout.readline()
