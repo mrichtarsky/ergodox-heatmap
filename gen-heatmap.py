@@ -56,7 +56,7 @@ for file_ in files:
             if not line.endswith('\n'):
                 continue
             try:
-                ts, marker, layer_id, col, row, pressed, keycode, time_ = line.rstrip().split(' ')
+                ts, marker, layer_id, col, row, pressed, keycode = line.rstrip().split(' ')[:7]
                 assert marker == 'C:'
                 if pressed == '1':
                     add(int(layer_id), int(row), int(col))
