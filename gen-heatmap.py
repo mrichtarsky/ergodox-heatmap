@@ -1,10 +1,13 @@
+from datetime import date
 import glob
 import os
 import shutil
 import subprocess
 import xml.etree.ElementTree as et
 
-LayerNames = (
+BROWSER = 'c:/Program Files/Mozilla Firefox/firefox.exe'
+
+LAYER_NAMES = (
     'Base',
     'LED',
     'Media',
@@ -23,6 +26,8 @@ HeatmapPath = 'heatmap'
 shutil.rmtree(HeatmapPath, ignore_errors=True)
 os.mkdir(HeatmapPath)
 
+Days = {}
+
 total_strokes = 0
 errors = 0
 keys = {} # [layer][row][col]
@@ -31,7 +36,7 @@ max_strokes = 0
 def get_heatmap_path(name_):
     return os.path.join(HeatmapPath, name_)
 
-def add(layer_id, row, col):
+def add(layer_id, row, col, ts):
     global max_strokes
     try:
         layer = keys[layer_id]
@@ -49,6 +54,12 @@ def add(layer_id, row, col):
     if row_entry[col] > max_strokes:
         max_strokes = row_entry[col]
 
+    day = date.fromtimestamp(float(ts))
+    try:
+        Days[day] += 1
+    except:
+        Days[day] = 1
+
 files = glob.glob('logs/*_log.txt')
 for file_ in files:
     with open(file_, 'rt') as f:
@@ -59,7 +70,7 @@ for file_ in files:
                 ts, marker, layer_id, col, row, pressed, keycode = line.rstrip().split(' ')[:7]
                 assert marker == 'C:'
                 if pressed == '1':
-                    add(int(layer_id), int(row), int(col))
+                    add(int(layer_id), int(row), int(col), ts)
                     total_strokes += 1
             except ValueError:
                 print("ERROR:", line)
@@ -101,6 +112,8 @@ with open(get_heatmap_path('index.html'), 'wt') as f:
 <style>
 table {
   border: 1px solid;
+  padding: 2px;
+  margin: 2px;
 }
 th {
   border-bottom: 1px solid;
@@ -135,8 +148,13 @@ th {
     </tr>
 </table>""", file=f)
 
+    print('<table><tr><th>Date</th><th>Keystrokes</th></tr>', file=f)
+    for day in sorted(Days.keys(), reverse=True)[:7]:
+        print(f"<tr><td>{day}</td><td>{Days[day]}</td></tr>", file=f)
+    print('</table>', file=f)
+
     for layer_id in sorted(keys):
-        print(f"""<h1>Layer {layer_id} - {LayerNames[layer_id]}</h1>
+        print(f"""<h1>Layer {layer_id} - {LAYER_NAMES[layer_id]}</h1>
     <img src="{get_svg_filename(layer_id, 'global')}"/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
     <img src="{get_svg_filename(layer_id, 'local')}"/>
 """, file=f)
@@ -147,4 +165,4 @@ th {
 import pathlib
 path = pathlib.Path(__file__).parent.resolve()
 
-subprocess.run([r'c:\Program Files\Mozilla Firefox\firefox.exe', 'file://%s/heatmap/index.html' % path])
+subprocess.run([BROWSER, 'file://%s/heatmap/index.html' % path])

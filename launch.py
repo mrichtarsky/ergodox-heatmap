@@ -7,6 +7,11 @@ import time
 path = pathlib.Path(__file__).parent.resolve()
 host = socket.gethostname()
 
+try:
+    os.mkdir('logs')
+except FileExistsError:
+    pass
+
 print('Launching')
 proc = subprocess.Popen(['hid_listen.exe'], stdout=subprocess.PIPE)
 
