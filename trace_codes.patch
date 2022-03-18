@@ -4,9 +4,9 @@ index 77256477bd..62cd2b508e 100644
 +++ b/keyboards/ergodox_ez/keymaps/martin_colemak/keymap.c
 @@ -263,6 +263,9 @@ void rgb_matrix_indicators_user(void) {
  }
- 
+
  bool process_record_user(uint16_t keycode, keyrecord_t *record) {
-+  uint8_t layer = layer_switch_get_layer(record->event.key);
++  uint8_t layer = layer_switch_get_layer(record->event.key); (void)layer;
 +  xprintf ("C: %u %u %u %u %ul\n", layer, record->event.key.row,
 +      record->event.key.col, record->event.pressed, keycode);
    switch (keycode) {
