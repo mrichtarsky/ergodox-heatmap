@@ -73,7 +73,7 @@ for file_ in files:
                     add(int(layer_id), int(row), int(col), ts)
                     total_strokes += 1
             except ValueError:
-                print("ERROR:", line)
+                print("ERROR:", file_, line)
                 errors += 1
 
 def get_svg_filename(layer_id, type_):
