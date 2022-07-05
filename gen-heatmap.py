@@ -1,10 +1,11 @@
-from datetime import date
+from datetime import date, timedelta
 import glob
 import os
 import shutil
 import subprocess
 import xml.etree.ElementTree as et
 
+NUM_LAST_DAYS = None
 BROWSER = 'c:/Program Files/Mozilla Firefox/firefox.exe'
 
 LAYER_NAMES = (
@@ -36,7 +37,7 @@ max_strokes = 0
 def get_heatmap_path(name_):
     return os.path.join(HeatmapPath, name_)
 
-def add(layer_id, row, col, ts):
+def add(layer_id, row, col, day):
     global max_strokes
     try:
         layer = keys[layer_id]
@@ -54,7 +55,6 @@ def add(layer_id, row, col, ts):
     if row_entry[col] > max_strokes:
         max_strokes = row_entry[col]
 
-    day = date.fromtimestamp(float(ts))
     try:
         Days[day] += 1
     except:
@@ -69,8 +69,11 @@ for file_ in files:
             try:
                 ts, marker, layer_id, col, row, pressed, keycode = line.rstrip().split(' ')[:7]
                 assert marker == 'C:'
+                day = date.fromtimestamp(float(ts))
+                if NUM_LAST_DAYS is not None and date.today() - day > timedelta(days=NUM_LAST_DAYS):
+                    continue
                 if pressed == '1':
-                    add(int(layer_id), int(row), int(col), ts)
+                    add(int(layer_id), int(row), int(col), day)
                     total_strokes += 1
             except ValueError:
                 print("ERROR:", file_, line)
@@ -134,7 +137,7 @@ th {
         print(f"""
         <tr>
             <td>{layer_id}</td>
-            <td>{layer_strokes}</td>
+            <td>{layer_strokes:,}</td>
         </tr>""", file=f)
 
     print(f"""
@@ -150,9 +153,10 @@ th {
 
     print('<table><tr><th>Date</th><th>Keystrokes</th></tr>', file=f)
     for day in sorted(Days.keys(), reverse=True)[:7]:
-        print(f"<tr><td>{day}</td><td>{Days[day]}</td></tr>", file=f)
+        print(f"<tr><td>{day}</td><td>{Days[day]:,}</td></tr>", file=f)
     print('</table>', file=f)
-
+    topDay = sorted(Days.items(), key=lambda elem: elem[1])[-1]
+    print(f"Day with most key strokes: {topDay[0]} ({topDay[1]:,})<br/>", file=f)
     for layer_id in sorted(keys):
         print(f"""<h1>Layer {layer_id} - {LAYER_NAMES[layer_id]}</h1>
     <img src="{get_svg_filename(layer_id, 'global')}"/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;

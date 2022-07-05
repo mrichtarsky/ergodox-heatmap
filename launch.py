@@ -1,5 +1,6 @@
 import os
 import pathlib
+import platform
 import socket
 import subprocess
 import logging
@@ -36,7 +37,8 @@ flusher.daemon = True
 flusher.start()
 
 print('Launching')
-proc = subprocess.Popen(['hid_listen.exe'], stdout=subprocess.PIPE)
+exe = {'Windows': 'hid_listen.exe', 'Darwin': './hid_listen.app'}[platform.system()]
+proc = subprocess.Popen([exe], stdout=subprocess.PIPE)
 
 try:
     while True:
