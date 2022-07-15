@@ -1,12 +1,14 @@
 from datetime import date, timedelta
 import glob
 import os
+import platform
 import shutil
 import subprocess
 import xml.etree.ElementTree as et
 
 NUM_LAST_DAYS = None
-BROWSER = 'c:/Program Files/Mozilla Firefox/firefox.exe'
+WINDOWS_BROWSER = 'c:/Program Files/Mozilla Firefox/firefox.exe'
+MACOS_BROWSER = 'Firefox'
 
 LAYER_NAMES = (
     'Base',
@@ -143,7 +145,7 @@ th {
     print(f"""
     <tr>
         <td>All</td>
-        <td>{total_strokes}</td>
+        <td>{total_strokes:,}</td>
     </tr>
     <tr>
         <td>Errors</td>
@@ -169,4 +171,8 @@ th {
 import pathlib
 path = pathlib.Path(__file__).parent.resolve()
 
-subprocess.run([BROWSER, 'file://%s/heatmap/index.html' % path])
+match platform.system():
+    case 'Darwin':
+        subprocess.run(['open', '-a', MACOS_BROWSER, 'heatmap/index.html'])
+    case 'Windows':
+        subprocess.run([WINDOWS_BROWSER, 'file://%s/heatmap/index.html' % path])
