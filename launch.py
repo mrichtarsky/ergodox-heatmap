@@ -1,5 +1,6 @@
+import datetime
 import os
-import pathlib
+from pathlib import Path
 import platform
 import socket
 import subprocess
@@ -7,13 +8,25 @@ import logging
 import threading
 import time
 
-path = pathlib.Path(__file__).parent.resolve()
+MAX_LOG_SIZE_MIB = 1
+
 host = socket.gethostname()
 
 try:
     os.mkdir('logs')
 except FileExistsError:
     pass
+
+logFileName = Path(__file__).parent.resolve() / 'logs' / (host + '_log.txt')
+
+if logFileName.is_file():
+    statInfo = logFileName.stat()
+    if statInfo.st_size > MAX_LOG_SIZE_MIB*1024*1024:
+        mtime = statInfo.st_mtime
+        archivedLogFileName = logFileName.with_stem(logFileName.stem + f"_{int(mtime)}")
+        logFileName.rename(archivedLogFileName)
+
+logFileName = Path(__file__).parent.resolve() / 'logs' / (host + '_log.txt')
 
 def flush_(fh):
     while 1:
@@ -26,7 +39,7 @@ log.setLevel(level=logging.INFO)
 
 formatter = logging.Formatter('%(message)s')
 
-fh = logging.FileHandler(os.path.join(path, 'logs', host + '_log.txt'))
+fh = logging.FileHandler(logFileName)
 fh.setLevel(level=logging.INFO)
 fh.setFormatter(formatter)
 
