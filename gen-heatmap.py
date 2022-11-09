@@ -1,8 +1,10 @@
 from datetime import date, timedelta
 import glob
 import os
+import pandas as pd
 import pickle
 import platform
+import plotly.graph_objs as go
 import re
 import shutil
 import subprocess
@@ -209,6 +211,33 @@ def gen_heatmap(layer, max_strokes, out_file):
     with open(get_heatmap_path(out_file), 'wt') as f:
         print(et.tostring(root, encoding='utf8').decode('utf8'), file=f)
 
+all_data_days_sorted = sorted(all_data.days.items(), key=lambda item: item[0])
+days_sorted, strokes_sorted = zip(*all_data_days_sorted)
+
+df = pd.DataFrame(data={'days': days_sorted,
+                        'strokes': strokes_sorted})
+df['MA_mean'] = df['strokes'].rolling(7).mean()
+df['MA_max'] = df['strokes'].rolling(30).max()
+df.dropna(inplace=True)
+
+def get_chart(title, xvalues, yvalues):
+    data = (go.Scatter(
+        x=xvalues,
+        y=yvalues,
+    ))
+
+    layout = go.Layout(
+        yaxis={ 'title': 'Strokes', },
+        title=title
+    )
+
+    fig = go.Figure(data=data, layout=layout)
+    chart_html = fig.to_html(include_plotlyjs=True, default_width='40%', default_height='30%')
+    return chart_html
+
+mean_over_days_chart = get_chart('Keystrokes per day (7 days rolling mean)', df['days'], df['MA_mean'])
+max_over_days_chart = get_chart('Max keystrokes per day (30 days rolling max)', df['days'], df['MA_max'])
+
 for layer_id in sorted(all_data.keys):
     layer = all_data.keys[layer_id]
     gen_heatmap(layer, all_data.max_strokes, get_svg_filename(layer_id, 'global'))
@@ -268,6 +297,10 @@ th {
 
     topDay = sorted(all_data.days.items(), key=lambda elem: elem[1])[-1]
     print(f"Day with most key strokes: {topDay[0]} ({topDay[1]:,})<br/>", file=f)
+
+    print(mean_over_days_chart, file=f)
+    print(max_over_days_chart, file=f)
+
     for layer_id in sorted(all_data.keys):
         print(f"""<h1>Layer {layer_id} - {LAYER_NAMES[layer_id]}</h1>
     <img src="{get_svg_filename(layer_id, 'global')}"/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
