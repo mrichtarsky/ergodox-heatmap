@@ -28,11 +28,19 @@ if logFileName.is_file():
 
 logFileName = Path(__file__).parent.resolve() / 'logs' / (host + '_log.txt')
 
+def ts():
+    return str(datetime.datetime.now())
+
 def flush_(fh):
     while 1:
-        time.sleep(20)
-        print('Flushing', time.time())
+        print(ts(), 'Flushing')
         fh.flush()
+        fh.close()
+        print(ts(), 'Sleeping')
+        # Let OneDrive sync
+        time.sleep(20)
+        f = open(logFileName, 'a')
+        fh.setStream(f.fileno())
 
 log = logging.getLogger('file')
 log.setLevel(level=logging.INFO)
@@ -49,7 +57,7 @@ flusher = threading.Thread(target=flush_, args=(fh, ))
 flusher.daemon = True
 flusher.start()
 
-print('Launching')
+print(ts(), 'Launching')
 exe = {'Windows': 'hid_listen.exe', 'Darwin': './hid_listen.app'}[platform.system()]
 proc = subprocess.Popen([exe], stdout=subprocess.PIPE)
 
@@ -62,4 +70,6 @@ try:
         if line.startswith('C:'):
             log.info("%s %s" % (time.time(), line.rstrip()))
 except KeyboardInterrupt:
+    fh.flush()
+    fh.close()
     proc.terminate()
