@@ -44,6 +44,7 @@ class KeyData:
         self.strokes_per_host = {}
         self.errors = 0
         self.max_strokes = 0
+        self.strokes_per_host_today = {}
 
         if from_file is not None:
             with open(from_file, 'rb') as f:
@@ -94,6 +95,11 @@ class KeyData:
                 self.strokes_per_host[otherHost] += otherStrokes
             except KeyError:
                 self.strokes_per_host[otherHost] = otherStrokes
+        for otherHost, otherStrokesToday in other.strokes_per_host_today.items():
+            try:
+                self.strokes_per_host_today[otherHost] += otherStrokesToday
+            except KeyError:
+                self.strokes_per_host_today[otherHost] = otherStrokesToday
 
         self.errors += other.errors
         self.max_strokes = self._calculate_max_strokes()
@@ -126,6 +132,12 @@ class KeylogParser:
             self.key_data.strokes_per_host[host] += 1
         except KeyError:
             self.key_data.strokes_per_host[host] = 1
+
+        if day == date.today():
+            try:
+                self.key_data.strokes_per_host_today[host] += 1
+            except:
+                self.key_data.strokes_per_host_today[host] = 1
 
     def _read(self):
         host = get_host(self.file_)
@@ -296,6 +308,11 @@ th {
     print('<table><tr><th>Date</th><th>Keystrokes</th></tr>', file=f)
     for day in sorted(all_data.days.keys(), reverse=True)[:7]:
         print(f"<tr><td>{day}</td><td>{all_data.days[day]:,}</td></tr>", file=f)
+    print('</table>', file=f)
+
+    print('<table><tr><th>Date</th><th>Keystrokes Today</th></tr>', file=f)
+    for host in all_data.strokes_per_host_today.keys():
+        print(f"<tr><td>{host}</td><td>{all_data.strokes_per_host_today[host]:,}</td></tr>", file=f)
     print('</table>', file=f)
 
     print('<table><tr><th>Host</th><th>Keystrokes</th></tr>', file=f)
