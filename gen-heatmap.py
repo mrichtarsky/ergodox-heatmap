@@ -1,10 +1,8 @@
 from datetime import date, timedelta
 import glob
 import os
-import pandas as pd
 import pickle
 import platform
-import plotly.graph_objs as go
 import re
 import shutil
 import subprocess
@@ -211,32 +209,42 @@ def gen_heatmap(layer, max_strokes, out_file):
     with open(get_heatmap_path(out_file), 'wt') as f:
         print(et.tostring(root, encoding='utf8').decode('utf8'), file=f)
 
-all_data_days_sorted = sorted(all_data.days.items(), key=lambda item: item[0])
-days_sorted, strokes_sorted = zip(*all_data_days_sorted)
+def get_charts():
+    if platform.system() == 'Darwin':
+        return '', ''
 
-df = pd.DataFrame(data={'days': days_sorted,
-                        'strokes': strokes_sorted})
-df['MA_mean'] = df['strokes'].rolling(7).mean()
-df['MA_max'] = df['strokes'].rolling(30).max()
-df.dropna(inplace=True)
+    import pandas as pd
+    import plotly.graph_objs as go
+    all_data_days_sorted = sorted(all_data.days.items(), key=lambda item: item[0])
+    days_sorted, strokes_sorted = zip(*all_data_days_sorted)
 
-def get_chart(title, xvalues, yvalues):
-    data = (go.Scatter(
-        x=xvalues,
-        y=yvalues,
-    ))
+    df = pd.DataFrame(data={'days': days_sorted,
+                            'strokes': strokes_sorted})
+    df['MA_mean'] = df['strokes'].rolling(7).mean()
+    df['MA_max'] = df['strokes'].rolling(30).max()
+    df.dropna(inplace=True)
 
-    layout = go.Layout(
-        yaxis={ 'title': 'Strokes', },
-        title=title
-    )
+    def get_chart(title, xvalues, yvalues):
+        data = (go.Scatter(
+            x=xvalues,
+            y=yvalues,
+        ))
 
-    fig = go.Figure(data=data, layout=layout)
-    chart_html = fig.to_html(include_plotlyjs=True, default_width='40%', default_height='30%')
-    return chart_html
+        layout = go.Layout(
+            yaxis={ 'title': 'Strokes', },
+            title=title
+        )
 
-mean_over_days_chart = get_chart('Keystrokes per day (7 days rolling mean)', df['days'], df['MA_mean'])
-max_over_days_chart = get_chart('Max keystrokes per day (30 days rolling max)', df['days'], df['MA_max'])
+        fig = go.Figure(data=data, layout=layout)
+        chart_html = fig.to_html(include_plotlyjs=True, default_width=600, default_height=300)
+        return chart_html
+
+    mean_over_days_chart = get_chart('Keystrokes per day (7 days rolling mean)', df['days'], df['MA_mean'])
+    max_over_days_chart = get_chart('Max keystrokes per day (30 days rolling max)', df['days'], df['MA_max'])
+
+    return mean_over_days_chart, max_over_days_chart
+
+mean_over_days_chart, max_over_days_chart = get_charts()
 
 for layer_id in sorted(all_data.keys):
     layer = all_data.keys[layer_id]
