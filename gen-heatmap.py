@@ -338,8 +338,10 @@ th {
 import pathlib
 path = pathlib.Path(__file__).parent.resolve()
 
-match platform.system():
-    case 'Darwin':
-        subprocess.run(['open', '-a', MACOS_BROWSER, 'heatmap/index.html'])
-    case 'Windows':
-        subprocess.run([WINDOWS_BROWSER, 'file://%s/heatmap/index.html' % path])
+system = platform.system()
+if system == 'Darwin':
+    subprocess.run(['open', '-a', MACOS_BROWSER, 'heatmap/index.html'])
+elif system == 'Windows':
+    subprocess.run([WINDOWS_BROWSER, 'file://%s/heatmap/index.html' % path])
+else:
+    raise Exception("Unsupported")
