@@ -154,7 +154,7 @@ class KeylogParser:
                         continue
                     else:
                         prevSig = sig
-                    assert marker == 'C:'
+                    assert marker == 'C:', (line, self.file_)
                     day = date.fromtimestamp(float(ts))
                     if self.num_last_days is not None and date.today() - day > timedelta(days=self.num_last_days):
                         continue
