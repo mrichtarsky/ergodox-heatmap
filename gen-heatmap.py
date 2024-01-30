@@ -50,7 +50,6 @@ class KeyData:
             with open(from_file, 'rb') as f:
                 self.keys, self.days, self.total_strokes, self.errors, self.max_strokes = pickle.load(f)
                 self.strokes_per_host[get_host(from_file)] = self.total_strokes
-                print(self.total_strokes)
 
     def save(self, file_):
         data = self.keys, self.days, self.total_strokes, self.errors, self.max_strokes
@@ -170,31 +169,34 @@ class KeylogParser:
 def get_heatmap_path(name_):
     return os.path.join(HEATMAP_PATH, name_)
 
-all_data = KeyData()
+def read_data():
+    all_data = KeyData()
 
-archived_files = glob.glob('logs/*_log_*.txt')
-for archived_file in archived_files:
-    timestamp = re.search(r'''_log_(\d+).txt''', archived_file).group(1)
-    kp = KeylogParser(archived_file)
-    if time.time() - float(timestamp) > SUMMARIZE_AFTER_NUM_DAYS*60*60*24:
-        print('Summarizing', archived_file)
-        kp.writeSummary(archived_file + '.summary')
-        os.unlink(archived_file)
-    else:
-        print('Adding', archived_file)
+    archived_files = glob.glob('logs/*_log_*.txt')
+    for archived_file in archived_files:
+        timestamp = re.search(r'''_log_(\d+).txt''', archived_file).group(1)
+        kp = KeylogParser(archived_file)
+        if time.time() - float(timestamp) > SUMMARIZE_AFTER_NUM_DAYS*60*60*24:
+            print('Summarizing', archived_file)
+            kp.writeSummary(archived_file + '.summary')
+            os.unlink(archived_file)
+        else:
+            print('Adding', archived_file)
+            all_data.merge(kp.key_data)
+
+    summaries = glob.glob('logs/*.summary')
+    for summary in summaries:
+        print('Adding', summary)
+        summary_kd = KeyData(summary)
+        all_data.merge(summary_kd)
+
+    files = glob.glob('logs/*_log.txt')
+    for file_ in files:
+        print('Adding', file_)
+        kp = KeylogParser(file_)
         all_data.merge(kp.key_data)
 
-summaries = glob.glob('logs/*.summary')
-for summary in summaries:
-    print('Adding', summary)
-    summary_kd = KeyData(summary)
-    all_data.merge(summary_kd)
-
-files = glob.glob('logs/*_log.txt')
-for file_ in files:
-    print('Adding', file_)
-    kp = KeylogParser(file_)
-    all_data.merge(kp.key_data)
+    return all_data
 
 def get_svg_filename(layer_id, type_):
     return f"heatmap_{layer_id}_{type_}.svg"
@@ -256,92 +258,100 @@ def get_charts():
 
     return mean_over_days_chart, max_over_days_chart
 
-mean_over_days_chart, max_over_days_chart = get_charts()
-
-for layer_id in sorted(all_data.keys):
-    layer = all_data.keys[layer_id]
-    gen_heatmap(layer, all_data.max_strokes, get_svg_filename(layer_id, 'global'))
-    max_layer_strokes = max([ max(row.values()) for row in layer.values() ])
-    gen_heatmap(layer, max_layer_strokes, get_svg_filename(layer_id, 'local'))
-
-with open(get_heatmap_path('index.html'), 'wt') as f:
-    print("""<html><head><title>ErgodoxEZ Heatmap</title>
-<style>
-table {
-  border: 1px solid;
-  padding: 2px;
-  margin: 2px;
-}
-th {
-  border-bottom: 1px solid;
-}
-</style>
-</head>
-<body>""", file=f)
-
-    print(f"""<table>
-    <tr>
-        <th>Layer</th>
-        <th>Keystrokes</th>
-    </tr>
-""", file=f)
+def write_heatmaps(all_data):
     for layer_id in sorted(all_data.keys):
         layer = all_data.keys[layer_id]
-        layer_strokes = sum([ sum(row.values()) for row in layer.values() ])
+        gen_heatmap(layer, all_data.max_strokes, get_svg_filename(layer_id, 'global'))
+        max_layer_strokes = max([ max(row.values()) for row in layer.values() ])
+        gen_heatmap(layer, max_layer_strokes, get_svg_filename(layer_id, 'local'))
+
+def write_html(all_data, mean_over_days_chart, max_over_days_chart):
+    with open(get_heatmap_path('index.html'), 'wt') as f:
+        print("""<html><head><title>ErgodoxEZ Heatmap</title>
+    <style>
+    table {
+    border: 1px solid;
+    padding: 2px;
+    margin: 2px;
+    }
+    th {
+    border-bottom: 1px solid;
+    }
+    </style>
+    </head>
+    <body>""", file=f)
+
+        print("""<table>
+        <tr>
+            <th>Layer</th>
+            <th>Keystrokes</th>
+        </tr>
+    """, file=f)
+        for layer_id in sorted(all_data.keys):
+            layer = all_data.keys[layer_id]
+            layer_strokes = sum([ sum(row.values()) for row in layer.values() ])
+            print(f"""
+            <tr>
+                <td>{layer_id}</td>
+                <td>{layer_strokes:,}</td>
+            </tr>""", file=f)
+
         print(f"""
         <tr>
-            <td>{layer_id}</td>
-            <td>{layer_strokes:,}</td>
-        </tr>""", file=f)
+            <td>All</td>
+            <td>{all_data.total_strokes:,}</td>
+        </tr>
+        <tr>
+            <td>Errors</td>
+            <td>{all_data.errors}</td>
+        </tr>
+    </table>""", file=f)
 
-    print(f"""
-    <tr>
-        <td>All</td>
-        <td>{all_data.total_strokes:,}</td>
-    </tr>
-    <tr>
-        <td>Errors</td>
-        <td>{all_data.errors}</td>
-    </tr>
-</table>""", file=f)
+        print('<table><tr><th>Date</th><th>Keystrokes</th></tr>', file=f)
+        for day in sorted(all_data.days.keys(), reverse=True)[:7]:
+            print(f"<tr><td>{day}</td><td>{all_data.days[day]:,}</td></tr>", file=f)
+        print('</table>', file=f)
 
-    print('<table><tr><th>Date</th><th>Keystrokes</th></tr>', file=f)
-    for day in sorted(all_data.days.keys(), reverse=True)[:7]:
-        print(f"<tr><td>{day}</td><td>{all_data.days[day]:,}</td></tr>", file=f)
-    print('</table>', file=f)
+        print('<table><tr><th>Date</th><th>Keystrokes Today</th></tr>', file=f)
+        for host in all_data.strokes_per_host_today.keys():
+            print(f"<tr><td>{host}</td><td>{all_data.strokes_per_host_today[host]:,}</td></tr>", file=f)
+        print('</table>', file=f)
 
-    print('<table><tr><th>Date</th><th>Keystrokes Today</th></tr>', file=f)
-    for host in all_data.strokes_per_host_today.keys():
-        print(f"<tr><td>{host}</td><td>{all_data.strokes_per_host_today[host]:,}</td></tr>", file=f)
-    print('</table>', file=f)
+        print('<table><tr><th>Host</th><th>Keystrokes</th></tr>', file=f)
+        for host, strokes in all_data.strokes_per_host.items():
+            print(f"<tr><td>{host}</td><td>{strokes:,}</td></tr>", file=f)
+        print('</table>', file=f)
 
-    print('<table><tr><th>Host</th><th>Keystrokes</th></tr>', file=f)
-    for host, strokes in all_data.strokes_per_host.items():
-        print(f"<tr><td>{host}</td><td>{strokes:,}</td></tr>", file=f)
-    print('</table>', file=f)
+        topDay = sorted(all_data.days.items(), key=lambda elem: elem[1])[-1]
+        print(f"Day with most key strokes: {topDay[0]} ({topDay[1]:,})<br/>", file=f)
 
-    topDay = sorted(all_data.days.items(), key=lambda elem: elem[1])[-1]
-    print(f"Day with most key strokes: {topDay[0]} ({topDay[1]:,})<br/>", file=f)
+        print(mean_over_days_chart, file=f)
+        print(max_over_days_chart, file=f)
 
-    print(mean_over_days_chart, file=f)
-    print(max_over_days_chart, file=f)
+        for layer_id in sorted(all_data.keys):
+            print(f"""<h1>Layer {layer_id} - {LAYER_NAMES[layer_id]}</h1>
+        <img src="{get_svg_filename(layer_id, 'global')}"/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        <img src="{get_svg_filename(layer_id, 'local')}"/>
+    """, file=f)
+        print("""</div>
+    </body>
+    </html>""", file=f)
 
-    for layer_id in sorted(all_data.keys):
-        print(f"""<h1>Layer {layer_id} - {LAYER_NAMES[layer_id]}</h1>
-    <img src="{get_svg_filename(layer_id, 'global')}"/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-    <img src="{get_svg_filename(layer_id, 'local')}"/>
-""", file=f)
-    print("""</div>
-</body>
-</html>""", file=f)
+def show_in_browser():
+    import pathlib
+    path = pathlib.Path(__file__).parent.resolve()
 
-import pathlib
-path = pathlib.Path(__file__).parent.resolve()
+    system = platform.system()
+    if system == 'Darwin':
+        subprocess.run(['open', '-a', MACOS_BROWSER, 'heatmap/index.html'])
+    elif system == 'Windows':
+        subprocess.run([WINDOWS_BROWSER, 'file://%s/heatmap/index.html' % path])
+    else:
+        raise Exception("Unsupported platform")
 
-system = platform.system()
-if system == 'Darwin':
-    subprocess.run(['open', '-a', MACOS_BROWSER, 'heatmap/index.html'])
-elif system == 'Windows':
-    subprocess.run([WINDOWS_BROWSER, 'file://%s/heatmap/index.html' % path])
-else:
-    raise Exception("Unsupported")
+
+all_data = read_data()
+mean_over_days_chart, max_over_days_chart = get_charts()
+write_heatmaps(all_data )
+write_html(all_data, mean_over_days_chart, max_over_days_chart)
+show_in_browser()
