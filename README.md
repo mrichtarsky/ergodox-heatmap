@@ -4,7 +4,7 @@
 
 ## Usage
 
-- Windows only at the moment, but only `hid_listen.exe` is OS-specific and also available for Linux/macOS
+- Works on Windows and macOS. But only `hid_listen` and the browser launching is OS-specific and can also be made to work on e.g. Linux.
 - Requires keycode tracing added to your firmware:
 ```
 patch keymap.c trace_codes.patch
