@@ -325,6 +325,10 @@ def write_html(all_data, mean_over_days_chart, max_over_days_chart):
         top_day = sorted(all_data.days.items(), key=lambda elem: elem[1])[-1]
         print(f"Day with most key strokes: {top_day[0]} ({top_day[1]:,})<br/>", file=f)
 
+        first_day = min(all_data.days.keys())
+        print(f"First key stroke: {first_day}<br/>", file=f)
+        print(f"Average key strokes per day: {all_data.total_strokes / len(all_data.days):,.2f}<br/>", file=f)
+
         print(mean_over_days_chart, file=f)
         print(max_over_days_chart, file=f)
 
