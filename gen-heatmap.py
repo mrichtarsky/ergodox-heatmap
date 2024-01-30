@@ -89,16 +89,16 @@ class KeyData:
             except KeyError:
                 self.days[other_day] = other_strokes
         self.total_strokes += other.total_strokes
-        for otherHost, otherStrokes in other.strokes_per_host.items():
+        for other_host, other_strokes in other.strokes_per_host.items():
             try:
-                self.strokes_per_host[otherHost] += otherStrokes
+                self.strokes_per_host[other_host] += other_strokes
             except KeyError:
-                self.strokes_per_host[otherHost] = otherStrokes
-        for otherHost, otherStrokesToday in other.strokes_per_host_today.items():
+                self.strokes_per_host[other_host] = other_strokes
+        for other_host, other_strokesToday in other.strokes_per_host_today.items():
             try:
-                self.strokes_per_host_today[otherHost] += otherStrokesToday
+                self.strokes_per_host_today[other_host] += other_strokesToday
             except KeyError:
-                self.strokes_per_host_today[otherHost] = otherStrokesToday
+                self.strokes_per_host_today[other_host] = other_strokesToday
 
         self.errors += other.errors
         self.max_strokes = self._calculate_max_strokes()
@@ -141,7 +141,7 @@ class KeylogParser:
     def _read(self):
         host = get_host(self.file_)
         with open(self.file_, 'rt') as f:
-            prevSig = None
+            previous_sig = None
             for line in f:
                 if not line.endswith('\n'):
                     continue
@@ -149,10 +149,10 @@ class KeylogParser:
                     ts, marker, layer_id, col, row, pressed, keycode = line.rstrip().split(' ')[:7]
                     # Dedup duplicate lines on macOS, maybe due to Karabiner
                     sig = (layer_id, col, row, pressed, keycode)
-                    if sig == prevSig:
+                    if sig == previous_sig:
                         continue
                     else:
-                        prevSig = sig
+                        previous_sig = sig
                     assert marker == 'C:', (line, self.file_)
                     day = date.fromtimestamp(float(ts))
                     if self.num_last_days is not None and date.today() - day > timedelta(days=self.num_last_days):
@@ -163,7 +163,7 @@ class KeylogParser:
                     print("ERROR:", self.file_, line)
                     self.key_data.errors += 1
 
-    def writeSummary(self, file_):
+    def write_summary(self, file_):
         self.key_data.save(file_)
 
 def get_heatmap_path(name_):
@@ -178,7 +178,7 @@ def read_data():
         kp = KeylogParser(archived_file)
         if time.time() - float(timestamp) > SUMMARIZE_AFTER_NUM_DAYS*60*60*24:
             print('Summarizing', archived_file)
-            kp.writeSummary(archived_file + '.summary')
+            kp.write_summary(archived_file + '.summary')
             os.unlink(archived_file)
         else:
             print('Adding', archived_file)
@@ -223,7 +223,7 @@ def gen_heatmap(layer, max_strokes, out_file):
     with open(get_heatmap_path(out_file), 'wt') as f:
         print(et.tostring(root, encoding='utf8').decode('utf8'), file=f)
 
-def get_charts():
+def get_charts(all_data):
     if platform.system() == 'Darwin':
         return '', ''
 
@@ -322,8 +322,8 @@ def write_html(all_data, mean_over_days_chart, max_over_days_chart):
             print(f"<tr><td>{host}</td><td>{strokes:,}</td></tr>", file=f)
         print('</table>', file=f)
 
-        topDay = sorted(all_data.days.items(), key=lambda elem: elem[1])[-1]
-        print(f"Day with most key strokes: {topDay[0]} ({topDay[1]:,})<br/>", file=f)
+        top_day = sorted(all_data.days.items(), key=lambda elem: elem[1])[-1]
+        print(f"Day with most key strokes: {top_day[0]} ({top_day[1]:,})<br/>", file=f)
 
         print(mean_over_days_chart, file=f)
         print(max_over_days_chart, file=f)
@@ -351,7 +351,7 @@ def show_in_browser():
 
 
 all_data = read_data()
-mean_over_days_chart, max_over_days_chart = get_charts()
-write_heatmaps(all_data )
+mean_over_days_chart, max_over_days_chart = get_charts(all_data)
+write_heatmaps(all_data)
 write_html(all_data, mean_over_days_chart, max_over_days_chart)
 show_in_browser()
