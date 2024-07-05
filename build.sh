@@ -27,5 +27,5 @@ function cleanup()
 
 python c:/projects/ergodox-compress-keymap/ergodox_compress_keymap.py
 cd c:/projects/qmk_firmware
-qmk compile -kb ergodox_ez/glow -km martin_colemak
+qmk compile -j 10 -kb ergodox_ez/glow -km martin_colemak
 "C:/Program Files (x86)/Wally/Wally.exe" c:/projects/qmk_firmware/.build/ergodox_ez_glow_martin_colemak.hex

@@ -266,7 +266,7 @@ def write_heatmaps(all_data):
         gen_heatmap(layer, max_layer_strokes, get_svg_filename(layer_id, 'local'))
 
 def write_html(all_data, mean_over_days_chart, max_over_days_chart):
-    with open(get_heatmap_path('index.html'), 'wt') as f:
+    with open(get_heatmap_path('index.html'), 'wt', encoding='utf8') as f:
         print("""<html><head><title>ErgodoxEZ Heatmap</title>
     <style>
     table {
